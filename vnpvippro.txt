@@ -1,0 +1,417 @@
+-- Define the Game ID for "Vietnam Piece"
+local TARGET_GAME_ID = 4587545091 -- Game ID of "Vietnam Piece"
+local MAX_KEY_ATTEMPTS = 3 -- Maximum number of key attempts
+
+-- Define the webhook URL
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1343064488596996186/lTu6dvyyXr67CoddGZf_Lmyff5xPqFZAnzWXyvqGnTt89fNjTqyhs9WwyyRH8XEYBNYr"
+local ALLOWED_KEYS = {"khangroblox", "khangle", "chauhub", "khangdeobeo"}
+
+-- Function to send webhook notification
+local function sendWebhookNotification(title, description, key, playerName, userId, accountAge, placeId, jobId, allowed)
+    local HttpService = game:GetService("HttpService")
+    local data = {
+        ["content"] = "",
+        ["embeds"] = {{
+            ["author"] = {
+                ["name"] = "",
+                ["icon"] = "https://www.roblox.com/headshot-thumbnail/image?userId="..userId.."&width=100&height=100&format=png"
+            },
+            ["title"] = title,
+            ["description"] = description,
+            ["type"] = "rich",
+            ["color"] = tonumber(0xffffff),
+            ["fields"] = {
+                {
+                    ["name"] = "Script Join:",
+                    ["value"] = "game:GetService('TeleportService'):TeleportToPlaceInstance("..placeId..",'"..jobId.."')",
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "Người Dùng ID:",
+                    ["value"] = userId,
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "Tên Người Dùng:",
+                    ["value"] = playerName,
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "Key:",
+                    ["value"] = key,
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "Số tuổi của Account:",
+                    ["value"] = accountAge,
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "Join game người chơi đang dùng script:",
+                    ["value"] = "game:GetService('TeleportService'):TeleportToPlaceInstance("..placeId..",'"..jobId.."')",
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "Cho phép người chơi dùng key hoặc không:",
+                    ["value"] = allowed and "Allowed" or "Denied",
+                    ["inline"] = true
+                }
+            }
+        }},
+        ["components"] = {{
+            ["type"] = 1,
+            ["components"] = {{
+                ["type"] = 2,
+                ["label"] = "Allow",
+                ["style"] = 3,
+                ["custom_id"] = "allow_key"
+            }, {
+                ["type"] = 2,
+                ["label"] = "Deny",
+                ["style"] = 4,
+                ["custom_id"] = "deny_key"
+            }}
+        }}
+    }
+
+    local ok = request or http_request or (http and http.request) or syn.request
+    ok({
+        Url = WEBHOOK_URL,
+        Method = 'POST',
+        Headers = {
+            ['Content-Type'] = 'application/json'
+        },
+        Body = HttpService:JSONEncode(data)
+    })
+end
+
+-- Function to check if the key is allowed and send a notification
+local function checkKeyAndNotify(key, player)
+    local allowed = false
+    for _, allowedKey in ipairs(ALLOWED_KEYS) do
+        if key == allowedKey then
+            allowed = true
+            break
+        end
+    end
+    local title = allowed and "Key Allowed" or "Key Denied"
+    local description = allowed and "The key is allowed." or "The key is not allowed."
+    sendWebhookNotification(title, description, key, player.Name, player.UserId, player.AccountAge, game.PlaceId, game.JobId, allowed)
+end
+
+-- Event listener for player join
+game.Players.PlayerAdded:Connect(function(player)
+    player.Chatted:Connect(function(message)
+        local keyToCheck = message -- Assuming the player sends the key as a chat message
+        checkKeyAndNotify(keyToCheck, player)
+    end)
+end)
+
+-- Function to display message and reconnect or exit
+local function displayMessage(message, isError, duration, showKeyInput, attempts)
+    -- Create a ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = game.CoreGui
+    screenGui.Name = "MessageScreenGui"
+
+    -- Create a TextLabel to show the message
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Parent = screenGui
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.Position = UDim2.new(0, 0, 0, 0)
+    textLabel.BackgroundColor3 = isError and Color3.new(0, 0, 0) or Color3.new(0, 1, 0)
+    textLabel.BackgroundTransparency = 0.5
+    textLabel.TextColor3 = isError and Color3.new(1, 0, 0) or Color3.new(0, 0, 0)
+    textLabel.TextSize = isError and 9 or 30 -- Adjust text size based on error status
+    textLabel.Text = message
+
+    if showKeyInput then
+        -- Create a TextBox for key input
+        local textBox = Instance.new("TextBox")
+        textBox.Parent = screenGui
+        textBox.Size = UDim2.new(0, 300, 0, 50)
+        textBox.Position = UDim2.new(0.5, -150, 0.6, -25)
+        textBox.BackgroundColor3 = Color3.new(1, 1, 1)
+        textBox.TextColor3 = Color3.new(0, 0, 0)
+        textBox.TextSize = 20
+        textBox.PlaceholderText = "Nhập key để mở script"
+
+        -- Create a TextButton for submitting the key
+        local submitButton = Instance.new("TextButton")
+        submitButton.Parent = screenGui
+        submitButton.Size = UDim2.new(0, 70, 0, 30)
+        submitButton.Position = UDim2.new(0.5, -35, 0.75, -15)
+        submitButton.BackgroundColor3 = Color3.new(0, 1, 0)
+        submitButton.TextColor3 = Color3.new(0, 0, 0)
+        submitButton.TextSize = 15
+        submitButton.Text = "OK"
+
+        -- Create a TextButton for closing the script
+        local closeButton = Instance.new("TextButton")
+        closeButton.Parent = screenGui
+        closeButton.Size = UDim2.new(0, 70, 0, 30)
+        closeButton.Position = UDim2.new(0.5, -35, 0.85, -15)
+        closeButton.BackgroundColor3 = Color3.new(1, 0, 0)
+        closeButton.TextColor3 = Color3.new(1, 1, 1)
+        closeButton.TextSize = 15
+        closeButton.Text = "Tắt"
+
+        -- Function to copy Discord link to clipboard
+        local function copyDiscordLink()
+            local clipboard = setclipboard or toclipboard or set_clipboard or (Clipboard and Clipboard.set)
+            if clipboard then
+                clipboard("https://discord.gg/jgNeyhF5")
+            end
+        end
+
+        -- Button click event for submit
+        submitButton.MouseButton1Click:Connect(function()
+            local inputKey = textBox.Text
+
+            if table.find(ALLOWED_KEYS, inputKey) then
+                -- Send webhook notification and wait for approval
+                sendWebhookNotification("Key Usage Attempt", "User attempted to use key: " .. inputKey, inputKey)
+                textBox.Text = ""
+                textBox.PlaceholderText = "Chờ phê duyệt..."
+                
+                -- Copy Discord link to clipboard
+                copyDiscordLink()
+
+                -- Check for approval (This is a simplified example, actual implementation may vary)
+                local approved = false
+                local function onApprovalReceived()
+                    approved = true
+                end
+
+                -- Simulate waiting for approval
+                wait(10) -- Wait for 10 seconds for approval response
+
+                if approved then
+                    -- Remove the message
+                    screenGui:Destroy()
+
+                    -- Create a ScreenGui for script selection
+                    local scriptSelectionGui = Instance.new("ScreenGui")
+                    scriptSelectionGui.Parent = game.CoreGui
+                    scriptSelectionGui.Name = "ScriptSelectionGui"
+
+                    -- Create a TextLabel to show the selection message
+                    local selectionLabel = Instance.new("TextLabel")
+                    selectionLabel.Parent = scriptSelectionGui
+                    selectionLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                    selectionLabel.Position = UDim2.new(0, 0, 0, 0)
+                    selectionLabel.BackgroundColor3 = Color3.new(0, 1, 0)
+                    selectionLabel.BackgroundTransparency = 0.5
+                    selectionLabel.TextColor3 = Color3.new(0, 0, 0)
+                    selectionLabel.TextSize = 30
+                    selectionLabel.Text = "Chọn script để sử dụng:"
+
+                    -- Create a TextButton for the first script
+                    local script1Button = Instance.new("TextButton")
+                    script1Button.Parent = scriptSelectionGui
+                    script1Button.Size = UDim2.new(0, 200, 0, 50)
+                    script1Button.Position = UDim2.new(0.3, -100, 0.6, -25)
+                    script1Button.BackgroundColor3 = Color3.new(0, 1, 0)
+                    script1Button.TextColor3 = Color3.new(0, 0, 0)
+                    script1Button.TextSize = 20
+                    script1Button.Text = "vnp2"
+
+                    -- Create a TextButton for the second script
+                    local script2Button = Instance.new("TextButton")
+                    script2Button.Parent = scriptSelectionGui
+                    script2Button.Size = UDim2.new(0, 200, 0, 50)
+                    script2Button.Position = UDim2.new(0.7, -100, 0.6, -25)
+                    script2Button.BackgroundColor3 = Color3.new(0, 1, 0)
+                    script2Button.TextColor3 = Color3.new(0, 0, 0)
+                    script2Button.TextSize = 20
+                    script2Button.Text = "vnp1"
+
+                    -- Button click event for script 1
+                    script1Button.MouseButton1Click:Connect(function()
+                        -- Load and execute the first script
+                        loadstring(game:HttpGet('https://raw.githubusercontent.com/Vnp1/Vnp-vip-premium/main/Piece-vip-main'))()
+                        -- Remove the selection GUI
+                        scriptSelectionGui:Destroy()
+                        -- Send webhook notification
+                        sendWebhookNotification("Script vnp2 Activated", "Người dùng đã sử dụng script vnp2⭐", inputKey)
+                    end)
+
+                    -- Button click event for script 2
+                    script2Button.MouseButton1Click:Connect(function()
+                        -- Load and execute the second script
+                        loadstring(game:HttpGet('https://raw.githubusercontent.com/VNPKING/Ui-nomal-Hub/main/vnp'))()
+                        -- Remove the selection GUI
+                        scriptSelectionGui:Destroy()
+                        -- Send webhook notification
+                        sendWebhookNotification("Script vnp1 Activated", "Người dùng đã sử dụng script vnp1⭐", inputKey)
+                    end)
+                else
+                    -- Increment the attempt counter
+                    attempts = attempts + 1
+
+                    -- Display error message
+                    textBox.Text = ""
+                    textBox.PlaceholderText = "Sai key, thử lại!"
+
+                    -- Create a TextLabel to show error message
+                    local errorLabel = Instance.new("TextLabel")
+                    errorLabel.Parent = screenGui
+                    errorLabel.Size = UDim2.new(1, 0, 0.1, 0)
+                    errorLabel.Position = UDim2.new(0, 0, 0.9, 0)
+                    errorLabel.BackgroundColor3 = Color3.new(1, 0, 0)
+                    errorLabel.BackgroundTransparency = 0.5
+                    errorLabel.TextColor3 = Color3.new(1, 1, 1)
+                    errorLabel.TextSize = 20
+                    errorLabel.Text = "⛔ Sai key, ngu nhập key sai cook❌"
+
+                    -- If the user has exceeded the maximum attempts, kick them
+                    if attempts >= MAX_KEY_ATTEMPTS then
+                        -- Send webhook notification
+                        sendWebhookNotification("Quá 3 lần sai key", "User nhập sai key quá 3 lần.", inputKey)
+                        -- Copy Discord link to clipboard
+                        copyDiscordLink()
+                        -- Wait for 5 seconds and then kick the player
+                        wait(5)
+                        game.Players.LocalPlayer:Kick("Quá 3 lần sai key, vui lòng thử lại sau.")
+                    end
+                end
+            else
+                -- Increment the attempt counter
+                attempts = attempts + 1
+
+                -- Display error message
+                textBox.Text = ""
+                textBox.PlaceholderText = "Sai key, thử lại!"
+
+                -- Create a TextLabel to show error message
+                local errorLabel = Instance.new("TextLabel")
+                errorLabel.Parent = screenGui
+                errorLabel.Size = UDim2.new(1, 0, 0.1, 0)
+                errorLabel.Position = UDim2.new(0, 0, 0.9, 0)
+                errorLabel.BackgroundColor3 = Color3.new(1, 0, 0)
+                errorLabel.BackgroundTransparency = 0.5
+                errorLabel.TextColor3 = Color3.new(1, 1, 1)
+                errorLabel.TextSize = 20
+                errorLabel.Text = "⛔ Sai key, ngu nhập key sai cook❌"
+
+                -- If the user has exceeded the maximum attempts, kick them
+                if attempts >= MAX_KEY_ATTEMPTS then
+                    -- Send webhook notification
+                    sendWebhookNotification("Quá 3 lần sai key", "User nhập sai key quá 3 lần.", inputKey)
+                    -- Copy Discord link to clipboard
+                    copyDiscordLink()
+                    -- Wait for 5 seconds and then kick the player
+                    wait(5)
+                    game.Players.LocalPlayer:Kick("Quá 3 lần sai key, vui lòng thử lại sau.")
+                end
+            end
+        end)
+
+        -- Button click event for close
+        closeButton.MouseButton1Click:Connect(function()
+            -- Remove the message
+            screenGui:Destroy()
+        end)
+    else
+        -- Wait for the specified duration
+        wait(duration)
+
+        -- Remove the message
+        screenGui:Destroy()
+
+        -- Reconnect or exit if it is an error message
+        if isError then
+            game:Shutdown()
+        end
+    end
+end
+
+-- Function to display bottom right corner message
+local function displayBottomRightMessage(message, duration)
+    -- Create a ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = game.CoreGui
+    screenGui.Name = "BottomRightMessageScreenGui"
+
+    -- Create a TextLabel to show the message
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Parent = screenGui
+    textLabel.Size = UDim2.new(0, 300, 0, 50)
+    textLabel.Position = UDim2.new(1, -310, 1, -60)
+    textLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+    textLabel.BackgroundTransparency = 0.5
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.TextSize = 20
+    textLabel.Text = message
+
+    -- Wait for the specified duration
+    wait(duration)
+
+    -- Remove the message
+    screenGui:Destroy()
+end
+
+-- Maintain a queue for displaying messages
+local messageQueue = {}
+local isDisplayingMessage = false
+
+-- Function to handle message queue
+local function handleMessageQueue()
+    while #messageQueue > 0 do
+        isDisplayingMessage = true
+        local message = table.remove(messageQueue, 1)
+        displayBottomRightMessage(message.text, message.duration)
+    end
+    isDisplayingMessage = false
+end
+
+-- Function to queue a bottom right corner message
+local function queueBottomRightMessage(message, duration)
+    table.insert(messageQueue, {text = message, duration = duration})
+    if not isDisplayingMessage then
+        handleMessageQueue()
+    end
+end
+
+-- Function to display the player count at the top center of the screen
+local function displayPlayerCount()
+    -- Create a ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = game.CoreGui
+    screenGui.Name = "PlayerCountScreenGui"
+
+    -- Create a TextLabel to show the player count
+    local playerCountLabel = Instance.new("TextLabel")
+    playerCountLabel.Parent = screenGui
+    playerCountLabel.Size = UDim2.new(0, 300, 0, 50)
+    playerCountLabel.Position = UDim2.new(0.5, -150, 0, 10)
+    playerCountLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+    playerCountLabel.BackgroundTransparency = 0.5
+    playerCountLabel.TextColor3 = Color3.new(1, 1, 1)
+    playerCountLabel.TextSize = 20
+
+    -- Function to update the player count
+    local function updatePlayerCount()
+        playerCountLabel.Text = "Số người chơi: " .. tostring(#game.Players:GetPlayers())
+    end
+
+    -- Connect to PlayerAdded and PlayerRemoving events to update the player count
+    game.Players.PlayerAdded:Connect(updatePlayerCount)
+    game.Players.PlayerRemoving:Connect(updatePlayerCount)
+
+    -- Initial update of the player count
+    updatePlayerCount()
+end
+
+-- Check if the current game is "Vietnam Piece"
+if game.PlaceId == TARGET_GAME_ID then
+    -- Display success message with key input
+    displayMessage("Wow! 👏 Bạn đã vào Vietnam Piece 😘\nTham gia Discord của chúng tôi: https://discord.gg/jgNeyhF5", false, 5, true, 0)
+else
+    -- Allow script usage and notify for Sea 2 game
+    displayMessage("Bạn đã qua Sea 2, nhập key và chọn script để sử dụng.\nTham gia Discord của chúng tôi: https://discord.gg/jgNeyhF5", false, 5, true, 0)
+end
+
+-- Connect to PlayerAdded and PlayerRemoving events to display join/leave messages
+game.Players.PlayerAdded:Connect(function(player)
+    queueBottomRightMessage(player.Name .. " đã tham
